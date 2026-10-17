@@ -1,0 +1,94 @@
+<div class="app-shell">
+  <!-- ==================== الشريط الجانبي ==================== -->
+  <aside class="sidebar" [class.open]="sidebarOpen()">
+    <div class="brand">
+      <div class="brand-logo">
+        <img src="logo.png" alt="شعار أكاديمية عرابي" />
+      </div>
+      <div class="grow">
+        <div class="brand-name">أكاديمية عرابي</div>
+        <div class="brand-tag">OrabiAcademy</div>
+      </div>
+      <button
+        type="button"
+        class="btn-icon only-mobile"
+        (click)="closeSidebar()"
+        aria-label="إغلاق القائمة"
+      >
+        <app-icon name="close" [size]="18" />
+      </button>
+    </div>
+
+    <nav class="nav">
+      @for (group of groups; track group) {
+        <div class="nav-group-title">{{ group }}</div>
+        @for (item of items(group); track item.path) {
+          <a
+            class="nav-item"
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            (click)="closeSidebar()"
+            [title]="item.hint"
+          >
+            <app-icon class="nav-icon" [name]="item.icon" [size]="18" />
+            <span class="grow truncate">{{ item.label }}</span>
+            @if (count(item); as total) {
+              <span class="nav-badge">{{ total }}</span>
+            }
+          </a>
+        }
+      }
+    </nav>
+
+    <div class="sidebar-foot">
+      <strong>نظام إدارة الأكاديمية</strong>
+      <div>إصدار 1.0 — متصل بواجهة الـ API على المنفذ 5275</div>
+      @if (store.lastUpdated(); as updated) {
+        <div>آخر تحديث: {{ updated.toLocaleTimeString('ar-EG-u-nu-latn') }}</div>
+      }
+    </div>
+  </aside>
+
+  @if (sidebarOpen()) {
+    <button type="button" class="overlay" (click)="closeSidebar()" aria-label="إغلاق القائمة"></button>
+  }
+
+  <!-- ==================== المحتوى ==================== -->
+  <div class="main-area">
+    <header class="topbar">
+      <button type="button" class="btn-icon burger" (click)="toggleSidebar()" aria-label="القائمة">
+        <app-icon name="menu" [size]="18" />
+      </button>
+
+      <div class="grow">
+        <div class="topbar-title">
+          {{ currentItem()?.label ?? 'لوحة المعلومات' }}
+          <span>{{ currentItem()?.hint ?? 'نظرة شاملة على الأكاديمية' }}</span>
+        </div>
+      </div>
+
+      <div class="chip-date">
+        <app-icon name="calendar" [size]="15" />
+        <span>{{ today }}</span>
+      </div>
+
+      <button type="button" class="btn-icon" title="إعادة تحميل كل البيانات" (click)="refresh()">
+        <app-icon name="refresh" [size]="17" />
+      </button>
+
+      <div class="topbar-user">
+        <div class="who">
+          <b>موظف الأكاديمية</b>
+          <span>صلاحيات كاملة</span>
+        </div>
+        <div class="avatar">م</div>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<app-toast-host />

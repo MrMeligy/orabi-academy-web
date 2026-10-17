@@ -1,0 +1,362 @@
+<!-- ==================== الترحيب ==================== -->
+<section class="hero">
+  <div class="hero-text">
+    <h2>مرحباً بك في أكاديمية عرابي</h2>
+    <p>
+      لوحة تحكم موظفي الأكاديمية لإدارة الطلاب وأولياء الأمور والمدربين والكورسات والحصص والتسجيلات والحضور
+      والتقييمات.
+    </p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <b>{{ number(store.counts().students) }}</b>
+        <span>طالب</span>
+      </div>
+      <div class="hero-stat">
+        <b>{{ number(store.counts().coaches) }}</b>
+        <span>مدرب</span>
+      </div>
+      <div class="hero-stat">
+        <b>{{ number(store.counts().courses) }}</b>
+        <span>كورس</span>
+      </div>
+      <div class="hero-stat">
+        <b>{{ number(store.counts().sessions) }}</b>
+        <span>حصة</span>
+      </div>
+      <div class="hero-stat">
+        <b>{{ number(store.counts().registrations) }}</b>
+        <span>تسجيل</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-logo">
+    <img src="logo.png" alt="OrabiAcademy" />
+  </div>
+</section>
+
+@if (store.error(); as error) {
+  <div class="alert alert-error" style="margin-top: 18px">
+    <app-icon name="alert" [size]="18" />
+    <div class="grow">
+      <b>تعذّر تحميل بيانات الأكاديمية</b>
+      <div class="text-sm">{{ error }}</div>
+    </div>
+    <button type="button" class="btn btn-sm btn-danger" (click)="store.loadAll()">إعادة المحاولة</button>
+  </div>
+}
+
+@if (store.loading()) {
+  <div class="card" style="margin-top: 18px">
+    <div class="loading">
+      <div class="spinner"></div>
+      <span>جارٍ تحميل بيانات الأكاديمية...</span>
+    </div>
+  </div>
+} @else {
+  <!-- ==================== الإحصائيات ==================== -->
+  <div class="stat-grid" style="margin-top: 20px">
+    @for (stat of stats(); track stat.label) {
+      <a class="stat-card" [routerLink]="stat.path">
+        <div class="stat-top">
+          <div class="stat-icon">
+            <app-icon [name]="stat.icon" [size]="20" />
+          </div>
+          <app-icon class="stat-arrow" name="arrow" [size]="16" />
+        </div>
+        <div class="stat-value">{{ number(stat.value) }}</div>
+        <div class="stat-label">{{ stat.label }}</div>
+        <div class="stat-hint">{{ stat.hint }}</div>
+      </a>
+    }
+  </div>
+
+  <!-- ==================== مؤشرات سريعة ==================== -->
+  <div class="grid-2" style="margin-top: 20px">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title-icon">
+          <app-icon name="courses" [size]="18" />
+        </div>
+        <div class="grow">
+          <h3>أكثر الكورسات تسجيلاً</h3>
+          <p>ترتيب الكورسات حسب عدد الطلاب المسجلين فيها</p>
+        </div>
+      </div>
+      <div class="card-body">
+        @if (topCourses().length === 0) {
+          <div class="empty" style="padding: 24px">
+            <div class="empty-emoji">
+              <app-icon name="inbox" [size]="26" />
+            </div>
+            <h4>لا توجد تسجيلات بعد</h4>
+            <p>ابدأ بتسجيل الطلاب في الكورسات لعرض هذا المؤشر.</p>
+            <a class="btn btn-primary" routerLink="/registrations">إدارة التسجيلات</a>
+          </div>
+        } @else {
+          <div class="bar-list">
+            @for (item of topCourses(); track item.label) {
+              <div class="bar-row">
+                <span class="bar-label" [title]="item.label">{{ item.label }}</span>
+                <div class="bar-track">
+                  <div class="bar-fill" [style.width]="barWidth(item.value, topCourses())"></div>
+                </div>
+                <span class="bar-value">{{ item.value }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title-icon">
+          <app-icon name="attendances" [size]="18" />
+        </div>
+        <div class="grow">
+          <h3>الحضور حسب الكورس</h3>
+          <p>عدد سجلات الحضور المرتبطة بحصص كل كورس</p>
+        </div>
+      </div>
+      <div class="card-body">
+        @if (attendanceByCourse().length === 0) {
+          <div class="empty" style="padding: 24px">
+            <div class="empty-emoji">
+              <app-icon name="inbox" [size]="26" />
+            </div>
+            <h4>لا توجد سجلات حضور</h4>
+            <p>سجّل حضور الطلاب في الحصص ليظهر هذا المؤشر.</p>
+            <a class="btn btn-primary" routerLink="/attendances">إدارة الحضور</a>
+          </div>
+        } @else {
+          <div class="bar-list">
+            @for (item of attendanceByCourse(); track item.label) {
+              <div class="bar-row">
+                <span class="bar-label" [title]="item.label">{{ item.label }}</span>
+                <div class="bar-track">
+                  <div class="bar-fill" [style.width]="barWidth(item.value, attendanceByCourse())"></div>
+                </div>
+                <span class="bar-value">{{ item.value }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== الجداول السريعة ==================== -->
+  <div class="grid-2" style="margin-top: 20px">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title-icon">
+          <app-icon name="sessions" [size]="18" />
+        </div>
+        <div class="grow">
+          <h3>أقرب الحصص المجدولة</h3>
+          <p>الحصص مرتبة من الأقدم إلى الأحدث</p>
+        </div>
+        <a class="btn btn-sm btn-light" routerLink="/sessions">الكل</a>
+      </div>
+      <div class="table-wrap">
+        @if (nextSessions().length === 0) {
+          <div class="empty" style="padding: 26px">
+            <div class="empty-emoji">
+              <app-icon name="inbox" [size]="26" />
+            </div>
+            <h4>لا توجد حصص</h4>
+            <p>أضف حصصاً جديدة من صفحة الحصص.</p>
+          </div>
+        } @else {
+          <table class="data-table" style="min-width: 420px">
+            <thead>
+              <tr>
+                <th>الحصة</th>
+                <th>الكورس</th>
+                <th>المدرب</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (session of nextSessions(); track session.id) {
+                <tr>
+                  <td><span class="id-pill">#{{ session.id }}</span></td>
+                  <td>
+                    <div class="cell-title">{{ session.course }}</div>
+                    <div class="cell-sub">{{ session.when }}</div>
+                  </td>
+                  <td>{{ session.coach }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title-icon">
+          <app-icon name="registrations" [size]="18" />
+        </div>
+        <div class="grow">
+          <h3>أحدث التسجيلات</h3>
+          <p>آخر الطلاب الذين تم تسجيلهم في الكورسات</p>
+        </div>
+        <a class="btn btn-sm btn-light" routerLink="/registrations">الكل</a>
+      </div>
+      <div class="table-wrap">
+        @if (recentRegistrations().length === 0) {
+          <div class="empty" style="padding: 26px">
+            <div class="empty-emoji">
+              <app-icon name="inbox" [size]="26" />
+            </div>
+            <h4>لا توجد تسجيلات</h4>
+            <p>ابدأ بتسجيل الطلاب في الكورسات.</p>
+          </div>
+        } @else {
+          <table class="data-table" style="min-width: 420px">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الطالب</th>
+                <th>الكورس</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (reg of recentRegistrations(); track reg.id) {
+                <tr>
+                  <td><span class="id-pill">#{{ reg.id }}</span></td>
+                  <td>
+                    <div class="cell-primary">
+                      <div [class]="'cell-avatar ' + tint(reg.student)">{{ reg.student.charAt(0) }}</div>
+                      <span class="cell-title">{{ reg.student }}</span>
+                    </div>
+                  </td>
+                  <td><span class="badge badge-blue">{{ reg.course }}</span></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== التقييمات + روابط سريعة ==================== -->
+  <div class="grid-2" style="margin-top: 20px">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title-icon">
+          <app-icon name="feedbacks" [size]="18" />
+        </div>
+        <div class="grow">
+          <h3>أحدث التقييمات</h3>
+          <p>ملاحظات المدربين على الطلاب</p>
+        </div>
+        <a class="btn btn-sm btn-light" routerLink="/feedbacks">الكل</a>
+      </div>
+      <div class="card-body">
+        @if (recentFeedbacks().length === 0) {
+          <div class="empty" style="padding: 24px">
+            <div class="empty-emoji">
+              <app-icon name="inbox" [size]="26" />
+            </div>
+            <h4>لا توجد تقييمات</h4>
+            <p>أضف تقييماً جديداً من صفحة التقييمات.</p>
+          </div>
+        } @else {
+          <div class="stack gap-2">
+            @for (fb of recentFeedbacks(); track fb.id) {
+              <div class="detail">
+                <div class="row gap-2">
+                  <div [class]="'cell-avatar ' + tint(fb.student)">{{ fb.student.charAt(0) }}</div>
+                  <div class="grow">
+                    <div class="fw-700">{{ fb.student }}</div>
+                    <div class="text-xs text-muted">{{ fb.course }}</div>
+                  </div>
+                  <span class="id-pill">#{{ fb.id }}</span>
+                </div>
+                <p style="margin-top: 8px">{{ fb.content }}</p>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom: 18px">
+        <div class="card-head">
+          <div class="card-title-icon">
+            <app-icon name="chart" [size]="18" />
+          </div>
+          <div class="grow">
+            <h3>مؤشرات إضافية</h3>
+            <p>ملخص سريع لحالة الأكاديمية</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="detail">
+              <div class="k">متوسط الطلاب لكل كورس</div>
+              <div class="v">{{ averageStudentsPerCourse() }}</div>
+            </div>
+            <div class="detail">
+              <div class="k">طلاب بلا تسجيل</div>
+              <div class="v">{{ unregisteredStudents() }}</div>
+            </div>
+            <div class="detail">
+              <div class="k">اليوم</div>
+              <div class="v">{{ today }}</div>
+            </div>
+            <div class="detail">
+              <div class="k">فروع الأكاديمية</div>
+              <div class="v">{{ store.counts().academy }}</div>
+            </div>
+          </div>
+
+          @if (coursesByCoach().length > 0) {
+            <div class="bar-list" style="margin-top: 18px">
+              @for (item of coursesByCoach(); track item.label) {
+                <div class="bar-row">
+                  <span class="bar-label" [title]="item.label">{{ item.label }}</span>
+                  <div class="bar-track">
+                    <div class="bar-fill" [style.width]="barWidth(item.value, coursesByCoach())"></div>
+                  </div>
+                  <span class="bar-value">{{ item.value }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title-icon">
+            <app-icon name="zap" [size]="18" />
+          </div>
+          <div class="grow">
+            <h3>دخول سريع</h3>
+            <p>العمليات المتاحة في النظام</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="quick-grid">
+            @for (item of quickLinks(); track item.path) {
+              <a class="quick" [routerLink]="item.path">
+                <span [class]="'quick-ico ' + item.accent">
+                  <app-icon [name]="item.icon" [size]="19" />
+                </span>
+                <span class="grow">
+                  <b>{{ item.label }}</b>
+                  <span>{{ item.hint }}</span>
+                </span>
+              </a>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}

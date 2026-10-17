@@ -1,0 +1,397 @@
+<!-- ==================== رأس الصفحة ==================== -->
+<div class="page-head">
+  <div [class]="'card-title-icon ' + config().accent">
+    <app-icon [name]="config().icon" [size]="24" />
+  </div>
+  <div class="titles">
+    <h1 class="page-title">{{ config().title }}</h1>
+    @if (config().subtitle) {
+      <p class="page-sub">{{ config().subtitle }}</p>
+    }
+  </div>
+  <div class="row gap-2">
+    <button type="button" class="btn btn-light" (click)="print()" title="طباعة الجدول">
+      <app-icon name="printer" [size]="16" />
+      <span>طباعة</span>
+    </button>
+    <button type="button" class="btn btn-light" (click)="exportCsv()" title="تصدير إلى ملف CSV">
+      <app-icon name="download" [size]="16" />
+      <span>تصدير</span>
+    </button>
+    <button type="button" class="btn btn-primary" (click)="openCreate()">
+      <app-icon name="plus" [size]="16" />
+      <span>{{ config().addLabel ?? 'إضافة جديد' }}</span>
+    </button>
+  </div>
+</div>
+
+@if (loadError()) {
+  <div class="card" style="margin-bottom: 18px">
+    <div class="card-body">
+      <div class="alert alert-error">
+        <app-icon name="alert" [size]="18" />
+        <div>
+          <b>تعذّر تحميل بيانات {{ config().entityPlural }}</b>
+          <div class="text-sm">{{ loadError() }}</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-danger" style="margin-inline-start: auto" (click)="load()">
+          إعادة المحاولة
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ==================== الجدول ==================== -->
+<div class="card">
+  <div class="toolbar">
+    <div class="search">
+      <app-icon class="ico" name="search" [size]="16" />
+      <input
+        type="search"
+        [placeholder]="config().searchPlaceholder ?? 'ابحث...'"
+        [value]="search()"
+        (input)="onSearch($any($event.target).value)"
+        aria-label="بحث"
+      />
+    </div>
+    @if (search()) {
+      <button type="button" class="btn btn-sm btn-light" (click)="clearSearch()">
+        <app-icon name="close" [size]="14" />
+        <span>مسح البحث</span>
+      </button>
+    }
+    <span class="counter">{{ totalFiltered() }} سجل</span>
+    <div class="grow"></div>
+    <label class="row gap-1 text-sm fw-700 text-muted">
+      <span>عدد الصفوف</span>
+      <select class="select-mini" [value]="pageSize()" (change)="onPageSize($any($event.target).value)">
+        @for (size of pageSizeOptions; track size) {
+          <option [value]="size">{{ size }}</option>
+        }
+      </select>
+    </label>
+    <button type="button" class="btn-icon" title="تحديث البيانات" (click)="load()">
+      <app-icon name="refresh" [size]="16" />
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <span>جارٍ تحميل بيانات {{ config().entityPlural }}...</span>
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="empty">
+      <div class="empty-emoji">
+        <app-icon name="inbox" [size]="28" />
+      </div>
+      <h4>{{ config().emptyTitle ?? ('لا توجد بيانات في ' + config().entityPlural) }}</h4>
+      <p>{{ config().emptyText ?? ('ابدأ بإضافة أول سجل في ' + config().entityPlural + ' من خلال الزر أدناه.') }}</p>
+      <button type="button" class="btn btn-primary" (click)="openCreate()">
+        <app-icon name="plus" [size]="16" />
+        <span>{{ config().addLabel ?? 'إضافة جديد' }}</span>
+      </button>
+    </div>
+  } @else if (totalFiltered() === 0) {
+    <div class="empty">
+      <div class="empty-emoji">
+        <app-icon name="search" [size]="28" />
+      </div>
+      <h4>لا توجد نتائج مطابقة</h4>
+      <p>لم نجد أي سجل يطابق «{{ search() }}». جرّب كلمة بحث أخرى.</p>
+      <button type="button" class="btn btn-light" (click)="clearSearch()">مسح البحث</button>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            @for (col of columns(); track col.key) {
+              <th
+                [class.sortable]="col.sortable !== false"
+                [style.text-align]="col.align ?? 'start'"
+                [style.width]="col.width"
+                (click)="toggleSort(col)"
+              >
+                {{ col.label }}
+                @if (col.sortable !== false) {
+                  <app-icon class="sort-caret" [name]="sortIcon(col)" [size]="13" />
+                }
+              </th>
+            }
+            <th style="text-align: end">{{ config().actionsLabel ?? 'إجراءات' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of paged(); track row.id) {
+            <tr>
+              @for (col of columns(); track col.key) {
+                <td [style.text-align]="col.align ?? 'start'">
+                  @switch (col.cell) {
+                    @case ('primary') {
+                      <div class="cell-primary">
+                        <div [class]="'cell-avatar ' + (col.avatar ? col.avatar(row) : 'bg-blue')">
+                          {{ cellText(col, row).charAt(0) }}
+                        </div>
+                        <div class="truncate">
+                          <div class="cell-title truncate">{{ cellText(col, row) }}</div>
+                          @if (col.sub && col.sub(row)) {
+                            <div class="cell-sub truncate">{{ col.sub(row) }}</div>
+                          }
+                        </div>
+                      </div>
+                    }
+                    @case ('badge') {
+                      <span class="badge" [class]="'badge ' + (col.badge ? col.badge(row) : 'badge-gray')">
+                        {{ cellText(col, row) }}
+                      </span>
+                    }
+                    @case ('id') {
+                      <span class="id-pill">{{ cellText(col, row) }}</span>
+                    }
+                    @default {
+                      <span [class.mono]="col.cell === 'mono'">{{ cellText(col, row) }}</span>
+                    }
+                  }
+                </td>
+              }
+              <td class="cell-actions">
+                <div class="actions">
+                  @if (detail()) {
+                    <button type="button" class="btn-icon" title="عرض التفاصيل" (click)="openDetail(row)">
+                      <app-icon name="eye" [size]="16" />
+                    </button>
+                  }
+                  <button type="button" class="btn-icon brand" title="تعديل" (click)="openEdit(row)">
+                    <app-icon name="edit" [size]="16" />
+                  </button>
+                  <button type="button" class="btn-icon danger" title="حذف" (click)="askDelete(row)">
+                    <app-icon name="trash" [size]="16" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager">
+      <span class="pager-info">{{ rangeLabel() }}</span>
+      <div class="pager-btns">
+        <button type="button" class="page-btn" [disabled]="page() === 1" (click)="goTo(1)" title="الأولى">
+          <app-icon name="first" [size]="15" />
+        </button>
+        <button
+          type="button"
+          class="page-btn"
+          [disabled]="page() === 1"
+          (click)="goTo(page() - 1)"
+          title="السابقة"
+        >
+          <app-icon name="prev" [size]="15" />
+        </button>
+        @for (p of visiblePages(); track p) {
+          <button type="button" class="page-btn" [class.active]="p === page()" (click)="goTo(p)">{{ p }}</button>
+        }
+        <button
+          type="button"
+          class="page-btn"
+          [disabled]="page() === totalPages()"
+          (click)="goTo(page() + 1)"
+          title="التالية"
+        >
+          <app-icon name="next" [size]="15" />
+        </button>
+        <button
+          type="button"
+          class="page-btn"
+          [disabled]="page() === totalPages()"
+          (click)="goTo(totalPages())"
+          title="الأخيرة"
+        >
+          <app-icon name="last" [size]="15" />
+        </button>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- ==================== نافذة الإضافة/التعديل ==================== -->
+@if (formOpen()) {
+  <div class="modal-backdrop" (click)="closeForm()" role="presentation">
+    <div class="modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="card-title-icon" [class]="'card-title-icon ' + config().accent">
+          <app-icon [name]="isEditing() ? 'edit' : 'plus'" [size]="20" />
+        </div>
+        <div>
+          <h3>{{ isEditing() ? ('تعديل ' + config().entityLabel) : ('إضافة ' + config().entityLabel + ' جديد') }}</h3>
+          <p>{{ isEditing() ? 'قم بتحديث البيانات ثم اضغط حفظ التعديلات.' : 'املأ الحقول التالية ثم اضغط حفظ.' }}</p>
+        </div>
+        <button type="button" class="modal-close" (click)="closeForm()" aria-label="إغلاق">
+          <app-icon name="close" [size]="17" />
+        </button>
+      </div>
+
+      <div class="modal-body">
+        @if (serverError()) {
+          <div class="alert alert-error" style="margin-bottom: 18px">
+            <app-icon name="alert" [size]="18" />
+            <div>{{ serverError() }}</div>
+          </div>
+        }
+
+        <div class="form-grid">
+          @for (field of fields(); track field.key) {
+            <div class="field" [class.span-2]="field.span2" [class.invalid]="isInvalid(field)">
+              <label [attr.for]="'field-' + field.key">
+                <span>{{ field.label }}</span>
+                @if (field.required) {
+                  <span class="req">*</span>
+                }
+              </label>
+
+              @switch (field.kind) {
+                @case ('textarea') {
+                  <textarea
+                    [attr.id]="'field-' + field.key"
+                    [placeholder]="field.placeholder ?? ''"
+                    [value]="fieldValue(field)"
+                    (input)="onFieldChange(field, $any($event.target).value)"
+                  ></textarea>
+                }
+                @case ('select') {
+                  <select
+                    [attr.id]="'field-' + field.key"
+                    [value]="fieldValue(field)"
+                    (change)="onFieldChange(field, $any($event.target).value)"
+                  >
+                    <option value="">{{ field.placeholder ?? '— اختر —' }}</option>
+                    @for (opt of field.options ?? []; track opt.value) {
+                      <option [value]="opt.value" [selected]="fieldValue(field) === '' + opt.value">
+                        {{ opt.label }}
+                      </option>
+                    }
+                  </select>
+                }
+                @default {
+                  <input
+                    [attr.id]="'field-' + field.key"
+                    [type]="inputType(field)"
+                    [placeholder]="field.placeholder ?? ''"
+                    [value]="fieldValue(field)"
+                    [attr.min]="field.min"
+                    [attr.max]="field.max"
+                    [attr.step]="field.step"
+                    [attr.maxlength]="field.maxLength"
+                    (input)="onFieldChange(field, $any($event.target).value)"
+                  />
+                }
+              }
+
+              @if (errorFor(field); as err) {
+                <span class="err">{{ err }}</span>
+              } @else if (field.hint) {
+                <span class="hint">{{ field.hint }}</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button type="button" class="btn btn-light" (click)="closeForm()" [disabled]="saving()">إلغاء</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn btn-primary" (click)="save()" [disabled]="saving()">
+          @if (saving()) {
+            <span class="spinner sm"></span>
+            <span>جارٍ الحفظ...</span>
+          } @else {
+            <app-icon name="save" [size]="16" />
+            <span>{{ isEditing() ? 'حفظ التعديلات' : 'حفظ' }}</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ==================== تأكيد الحذف ==================== -->
+@if (confirmRow(); as target) {
+  <div class="modal-backdrop" (click)="cancelDelete()" role="presentation">
+    <div class="modal narrow" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="card-title-icon" style="background: var(--danger-bg); color: var(--danger-fg)">
+          <app-icon name="trash" [size]="20" />
+        </div>
+        <div>
+          <h3>تأكيد الحذف</h3>
+          <p>لا يمكن التراجع عن هذه العملية.</p>
+        </div>
+        <button type="button" class="modal-close" (click)="cancelDelete()" aria-label="إغلاق">
+          <app-icon name="close" [size]="17" />
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>
+          هل أنت متأكد من حذف
+          <b>{{ deleteLabel() }}</b>
+          من {{ config().entityPlural }}؟
+        </p>
+        <div class="alert alert-info" style="margin-top: 14px">
+          <app-icon name="info" [size]="18" />
+          <div>سيتم حذف السجل من قاعدة البيانات نهائياً.</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-light" (click)="cancelDelete()" [disabled]="deleting()">إلغاء</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="deleting()">
+          @if (deleting()) {
+            <span class="spinner sm"></span>
+            <span>جارٍ الحذف...</span>
+          } @else {
+            <app-icon name="trash" [size]="16" />
+            <span>نعم، احذف</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ==================== التفاصيل ==================== -->
+@if (detailRow(); as target) {
+  <div class="modal-backdrop" (click)="closeDetail()" role="presentation">
+    <div class="modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div class="card-title-icon" [class]="'card-title-icon ' + config().accent">
+          <app-icon name="eye" [size]="20" />
+        </div>
+        <div>
+          <h3>{{ detailTitle() }}</h3>
+          <p>تفاصيل السجل رقم #{{ target.id }}</p>
+        </div>
+        <button type="button" class="modal-close" (click)="closeDetail()" aria-label="إغلاق">
+          <app-icon name="close" [size]="17" />
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-grid">
+          @for (item of detailItems(); track item.label) {
+            <div class="detail" [style.grid-column]="item.wide ? '1 / -1' : null">
+              <div class="k">{{ item.label }}</div>
+              <div class="v">{{ item.value }}</div>
+            </div>
+          }
+        </div>
+      </div>
+      <div class="modal-foot">
+        <div class="spacer"></div>
+        <button type="button" class="btn btn-light" (click)="closeDetail()">إغلاق</button>
+      </div>
+    </div>
+  </div>
+}
